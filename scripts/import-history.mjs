@@ -12,11 +12,20 @@ import { homedir } from 'os';
 const HOME = homedir();
 const MCP_URL = 'http://localhost:3211/mcp';
 
-// 项目目录映射
+// 项目目录映射 — 所有 D 盘 Git 项目
 const PROJECT_MAP = {
   'D--Kaction': 'D:/Kaction',
   'D--OrdKnow': 'D:/OrdKnow',
   'D--girlfriend': 'D:/girlfriend',
+  'D--3d-room-desktop': 'D:/3d-room-desktop',
+  'D--firecrawl-repo': 'D:/firecrawl-repo',
+  'D--memorix': 'D:/memorix',
+  'D--multimodal-inspect': 'D:/multimodal_inspect',
+  'D--novel-writer': 'D:/novel-writer',
+  'D--webnovel-writer': 'D:/webnovel-writer',
+  'D--YNU_LabelOR.v1.0': 'D:/YNU_LabelOR.v1.0',
+  'D--music-station': 'D:/music-station',
+  'D--cc-connect': 'D:/cc-connect',
 };
 
 // ============ Memorix HTTP MCP Client ============
@@ -123,15 +132,17 @@ async function importCodexSessions() {
             const userMsgs = messages.filter(m => m.role === 'user');
             if (userMsgs.length === 0) continue;
 
-            const summary = userMsgs.slice(0, 3).map(m => m.content).join('\n').slice(0, 300);
             const date = `${year}-${month}-${day}`;
-            const title = `[Codex ${date}] ${summary.slice(0, 60).replace(/\n/g, ' ')}`;
-            const narrative = `Codex 会话 (${date}, model=${sessionModel || 'unknown'})\n\n${summary}`;
-
-            console.log(`  导入: ${basename(file)} → ${projectRoot} (${userMsgs.length} 条消息)`);
-
-            const ok = storeMemory(title, narrative, 'what-changed', ['codex-history', 'imported'], projectRoot);
-            if (ok) totalImported++;
+            // 为每条用户消息创建独立记忆
+            let imported = 0;
+            for (const msg of userMsgs) {
+              const title = `[Codex ${date}] ${msg.content.slice(0, 80).replace(/\n/g, ' ')}`;
+              const narrative = msg.content;
+              const ok = storeMemory(title, narrative, 'what-changed', ['codex-history', 'imported'], projectRoot);
+              if (ok) imported++;
+            }
+            console.log(`  导入: ${basename(file)} → ${projectRoot} (${imported}/${userMsgs.length} 条)`);
+            totalImported += imported;
           } catch (e) {
             console.log(`  错误: ${basename(file)}: ${e.message}`);
           }
@@ -184,14 +195,16 @@ async function importClaudeSessions() {
         if (userMsgs.length === 0) continue;
 
         const date = file.split('T')[0] || 'unknown';
-        const summary = userMsgs.slice(0, 3).join('\n').slice(0, 300);
-        const title = `[Claude ${date}] ${summary.slice(0, 60).replace(/\n/g, ' ')}`;
-        const narrative = `Claude Code 会话 (${date})\n\n${summary}`;
-
-        console.log(`    导入: ${file} (${userMsgs.length} 条用户消息)`);
-
-        const ok = storeMemory(title, narrative, 'what-changed', ['claude-history', 'imported'], projectRoot);
-        if (ok) totalImported++;
+        // 为每条用户消息创建独立记忆
+        let imported = 0;
+        for (const msg of userMsgs) {
+          const title = `[Claude ${date}] ${msg.slice(0, 80).replace(/\n/g, ' ')}`;
+          const narrative = msg;
+          const ok = storeMemory(title, narrative, 'what-changed', ['claude-history', 'imported'], projectRoot);
+          if (ok) imported++;
+        }
+        console.log(`    导入: ${file} (${imported}/${userMsgs.length} 条)`);
+        totalImported += imported;
       } catch (e) {
         console.log(`    错误: ${file}: ${e.message}`);
       }
